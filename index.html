@@ -4,18 +4,40 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>chunked-promise</title>
-    <meta name="description" content="Chunked async execution. Queue & batch promises with progress, timeout, rate limiting. Zero dependencies." />
+    <meta
+      name="description"
+      content="Chunked async execution. Queue & batch promises with progress, timeout, rate limiting. Zero dependencies."
+    />
     <link rel="icon" href="/logo.png" type="image/png" />
     <meta property="og:title" content="chunked-promise" />
-    <meta property="og:description" content="Chunked async execution. Queue & batch promises with progress, timeout, rate limiting. Zero dependencies." />
-    <meta property="og:image" content="https://metaory.github.io/chunked-promise/social.png" />
+    <meta
+      property="og:description"
+      content="Chunked async execution. Queue & batch promises with progress, timeout, rate limiting. Zero dependencies."
+    />
+    <meta
+      property="og:image"
+      content="https://metaory.github.io/chunked-promise/social.png"
+    />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://metaory.github.io/chunked-promise" />
+    <meta
+      property="og:url"
+      content="https://metaory.github.io/chunked-promise"
+    />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="chunked-promise" />
-    <meta name="twitter:description" content="Chunked async execution. Queue & batch promises with progress, timeout, rate limiting. Zero dependencies." />
-    <meta name="twitter:image" content="https://metaory.github.io/chunked-promise/social.png" />
-    <script defer src="ticks.js" data-website-id="436c17c6-f41c-4c25-a5f4-104a4bda47c1"></script>
+    <meta
+      name="twitter:description"
+      content="Chunked async execution. Queue & batch promises with progress, timeout, rate limiting. Zero dependencies."
+    />
+    <meta
+      name="twitter:image"
+      content="https://metaory.github.io/chunked-promise/social.png"
+    />
+    <script
+      defer
+      src="ticks.js"
+      data-website-id="436c17c6-f41c-4c25-a5f4-104a4bda47c1"
+    ></script>
     <link
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap"
       rel="stylesheet"
@@ -36,7 +58,7 @@
         --chunk: #00ffc8;
         --pending: #2a2a3a;
         --running: #fbbf24;
-        --done: #34d399;
+        --done: #33aa44;
         --failed: #ef4444;
         --timeout: #f97316;
         --cancelled: #6b7280;
@@ -364,34 +386,31 @@
         justify-content: center;
         font-family: "JetBrains Mono", monospace;
         font-size: 0.75rem;
-        color: var(--muted);
         transition: all 0.3s;
         position: relative;
+        color: contrast-color(var(--bg));
+        background: var(--bg);
+        font-weight: bold;
       }
       .task[data-state="running"] {
-        background: var(--running);
-        color: var(--bg);
+        --bg: var(--running);
         animation: pulse 0.6s infinite;
         box-shadow: 0 0 20px var(--running);
       }
       .task[data-state="done"] {
-        background: var(--done);
-        color: var(--bg);
+        --bg: var(--done);
         animation: pop 0.4s;
       }
       .task[data-state="failed"] {
-        background: var(--failed);
-        color: white;
+        --bg: var(--failed);
         animation: shake 0.3s;
       }
       .task[data-state="timeout"] {
-        background: var(--timeout);
-        color: white;
+        --bg: var(--timeout);
         animation: shake 0.3s;
       }
       .task[data-state="cancelled"] {
-        background: var(--cancelled);
-        color: white;
+        --bg: var(--cancelled);
         opacity: 0.6;
         text-decoration: line-through;
       }
@@ -746,7 +765,12 @@
     </main>
 
     <script type="module">
-      import { q, chunk, AbortError, TimeoutError } from "./src/chunked-promise.js";
+      import {
+        q,
+        chunk,
+        AbortError,
+        TimeoutError,
+      } from "./src/chunked-promise.js";
 
       const $ = (id) => document.getElementById(id);
       const val = (id) => +$(id).value;
