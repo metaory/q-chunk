@@ -6,14 +6,15 @@
   <title>q-chunk</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <script type="module" src="https://unpkg.com/gradient-gl?seed=a2.df8a"></script>
   <style>
     :root {
       --bg: #0a0a0f;
-      --surface: #12121a;
+      --surface: #12121a88;
       --border: #1e1e2e;
       --text: #e4e4ef;
       --muted: #6b6b7b;
-      --accent: #00ffc8;
+      --accent: #4411ee;
       --q: #ff6b9d;
       --chunk: #00ffc8;
       --pending: #2a2a3a;
@@ -24,12 +25,14 @@
     body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
     main { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
     header { text-align: center; margin-bottom: 4rem; }
-    h1 { font-size: 3rem; font-weight: 600; background: linear-gradient(135deg, var(--accent), var(--q)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    h1 { font-size: 3rem; font-weight: 600; background: linear-gradient(135deg, var(--accent), var(--q)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
     .subtitle { color: var(--muted); font-size: 1.1rem; }
     .controls { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; display: flex; gap: 2rem; flex-wrap: wrap; align-items: center; }
     label { font-size: 0.9rem; color: var(--muted); display: flex; align-items: center; gap: 0.75rem; }
     input[type="range"] { width: 100px; accent-color: var(--accent); }
     input[type="number"] { width: 55px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+    input[type="number"]:disabled, input[type="range"]:disabled { opacity: 0.5; cursor: not-allowed; }
+    input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
     button { font-family: inherit; font-weight: 600; padding: 0.6rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
     .btn-run { background: var(--accent); color: var(--bg); }
     .btn-run:hover:not(:disabled) { transform: translateY(-2px); }
@@ -67,6 +70,7 @@
     .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 600; }
     .stat-value.q { color: var(--q); }
     .stat-value.c { color: var(--chunk); }
+    canvas { filter: blur(1em) saturate(0.8) brightness(0.5) opacity(0.6); }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -80,7 +84,8 @@
     <div class="controls">
       <label>Tasks <input type="range" id="count" min="4" max="24" value="12" oninput="this.nextElementSibling.value=this.value"><input type="number" min="4" max="24" value="12" oninput="this.previousElementSibling.value=this.value"></label>
       <label>Chunk <input type="range" id="size" min="1" max="12" value="4" oninput="this.nextElementSibling.value=this.value"><input type="number" min="1" max="12" value="4" oninput="this.previousElementSibling.value=this.value"></label>
-      <label>Delay <input type="number" id="delay" min="100" max="2000" step="100" value="300">ms</label>
+      <label>Duration <input type="range" id="delay" min="100" max="2000" step="100" value="300" oninput="this.nextElementSibling.value=this.value"><input type="number" id="delay-num" min="100" max="2000" step="100" value="300" oninput="this.previousElementSibling.value=this.value">ms</label>
+      <label style="cursor: pointer;"><input type="checkbox" id="random" style="cursor: pointer;" onchange="toggleRandom()"> Random duration</label>
       <button class="btn-run" onclick="run()">Run Demo</button>
       <button class="btn-reset" onclick="reset()">Reset</button>
     </div>
@@ -148,15 +153,19 @@
       running = true
       document.querySelector('.btn-run').disabled = true
 
-      const [n, size, delay] = [val('count'), val('size'), val('delay')]
+      const [n, size, baseDelay, isRandom] = [val('count'), val('size'), val('delay'), $('random').checked]
       reset()
-      log(`Starting: ${n} tasks, chunk=${size}, delay=${delay}ms`, 'i')
+      const delayDesc = isRandom ? `random (${baseDelay}ms max)` : `${baseDelay}ms`
+      log(`Starting: ${n} tasks, chunk=${size}, duration=${delayDesc}`, 'i')
+
+      const getDelay = () => isRandom ? Math.floor(Math.random() * baseDelay) + 100 : baseDelay
 
       const makeTasks = (container, type) =>
         Array.from({ length: n }, (_, i) => async () => {
+          const taskDelay = getDelay()
           setTaskState(container, i, 'running')
-          log(`${type}: task ${i + 1} started`, type === 'q' ? 'q' : 'c')
-          await new Promise(r => setTimeout(r, delay))
+          log(`${type}: task ${i + 1} started${isRandom ? ` (${taskDelay}ms)` : ''}`, type === 'q' ? 'q' : 'c')
+          await new Promise(r => setTimeout(r, taskDelay))
           setTaskState(container, i, 'done')
           log(`${type}: task ${i + 1} done`, type === 'q' ? 'q' : 'c')
           return i + 1
@@ -185,7 +194,14 @@
       document.querySelector('.btn-run').disabled = false
     }
 
-    Object.assign(window, { run, reset })
+    const toggleRandom = () => {
+      const isRandom = $('random').checked
+      $('delay').disabled = isRandom
+      $('delay-num').disabled = isRandom
+    }
+
+    Object.assign(window, { run, reset, toggleRandom })
+    toggleRandom()
     reset()
     log('Ready. Click "Run Demo" to start.', 'i')
   </script>
