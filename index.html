@@ -1,216 +1,982 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>q-chunk</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
-  <script type="module" src="https://unpkg.com/gradient-gl?seed=a2.df8a"></script>
-  <style>
-    :root {
-      --bg: #0a0a0f;
-      --surface: #12121a88;
-      --border: #1e1e2e;
-      --text: #e4e4ef;
-      --muted: #6b6b7b;
-      --accent: #4411ee;
-      --q: #ff6b9d;
-      --chunk: #00ffc8;
-      --pending: #2a2a3a;
-      --running: #fbbf24;
-      --done: #34d399;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-    main { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
-    header { text-align: center; margin-bottom: 4rem; position: relative; }
-    h1 { font-size: 3rem; font-weight: 600; background: linear-gradient(135deg, var(--accent), var(--q)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-    .subtitle { color: var(--muted); font-size: 1.1rem; }
-    .github-link { position: absolute; top: 0; right: 0; color: var(--muted); text-decoration: none; font-size: 1.2rem; transition: color 0.2s, transform 0.2s; display: flex; align-items: center; gap: 0.5rem; }
-    .github-link:hover { color: var(--text); transform: translateY(-2px); }
-    .github-link svg { width: 20px; height: 20px; fill: currentColor; }
-    .controls { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; display: flex; gap: 2rem; flex-wrap: wrap; align-items: center; }
-    label { font-size: 0.9rem; color: var(--muted); display: flex; align-items: center; gap: 0.75rem; }
-    input[type="range"] { width: 100px; accent-color: var(--accent); }
-    input[type="number"] { width: 55px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem; color: var(--text); font-family: 'JetBrains Mono', monospace; }
-    input[type="number"]:disabled, input[type="range"]:disabled { opacity: 0.5; cursor: not-allowed; }
-    input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
-    button { font-family: inherit; font-weight: 600; padding: 0.6rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
-    .btn-run { background: var(--accent); color: var(--bg); }
-    .btn-run:hover:not(:disabled) { transform: translateY(-2px); }
-    .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-reset { background: var(--border); color: var(--text); }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
-    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
-    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; position: relative; }
-    .panel::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--color); border-radius: 8px 8px 0 0; }
-    .panel-head { display: flex; justify-content: space-between; margin-bottom: 1rem; }
-    .panel-title { font-family: 'JetBrains Mono', monospace; color: var(--color); display: flex; align-items: center; gap: 0.5rem; }
-    .panel-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--color); }
-    .time { font-family: 'JetBrains Mono', monospace; color: var(--muted); }
-    .tasks { display: flex; flex-wrap: wrap; gap: 0.5rem; min-height: 120px; align-content: flex-start; }
-    .task { width: 40px; height: 40px; border-radius: 6px; background: var(--pending); display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--muted); transition: all 0.3s; }
-    .task[data-state="running"] { background: var(--running); color: var(--bg); animation: pulse 0.6s infinite; box-shadow: 0 0 20px var(--running); }
-    .task[data-state="done"] { background: var(--done); color: var(--bg); animation: pop 0.3s; }
-    @keyframes pulse { 50% { transform: scale(1.1); } }
-    @keyframes pop { 0% { transform: scale(1.3); } }
-    .console { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-    .console-bar { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; background: var(--bg); border-bottom: 1px solid var(--border); }
-    .dot { width: 12px; height: 12px; border-radius: 50%; }
-    .dot:nth-child(1) { background: #ff5f57; }
-    .dot:nth-child(2) { background: #febc2e; }
-    .dot:nth-child(3) { background: #28c840; }
-    .console-out { padding: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; max-height: 280px; overflow-y: auto; line-height: 1.8; }
-    .log { display: flex; gap: 0.75rem; }
-    .log-t { color: var(--muted); }
-    .log-q { color: var(--q); }
-    .log-c { color: var(--chunk); }
-    .log-i { color: var(--muted); }
-    .log-s { color: var(--done); }
-    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem; border-top: 1px solid var(--border); text-align: center; }
-    .stat-label { font-size: 0.8rem; color: var(--muted); }
-    .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 600; }
-    .stat-value.q { color: var(--q); }
-    .stat-value.c { color: var(--chunk); }
-    canvas { filter: blur(1em) saturate(0.8) brightness(0.5) opacity(0.6); }
-    [hidden] { display: none !important; }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <a href="https://github.com/metaory/q-chunk" target="_blank" rel="noopener noreferrer" class="github-link" aria-label="GitHub repository">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none"><path d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M7.024 2.31a9 9 0 0 1 2.125 1.046A11.4 11.4 0 0 1 12 3c.993 0 1.951.124 2.849.355a9 9 0 0 1 2.124-1.045c.697-.237 1.69-.621 2.28.032c.4.444.5 1.188.571 1.756c.08.634.099 1.46-.111 2.28C20.516 7.415 21 8.652 21 10c0 2.042-1.106 3.815-2.743 5.043a9.5 9.5 0 0 1-2.59 1.356c.214.49.333 1.032.333 1.601v3a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-.991c-.955.117-1.756.013-2.437-.276c-.712-.302-1.208-.77-1.581-1.218c-.354-.424-.74-1.38-1.298-1.566a1 1 0 0 1 .632-1.898c.666.222 1.1.702 1.397 1.088c.48.62.87 1.43 1.63 1.753c.313.133.772.22 1.49.122L8 17.98a4 4 0 0 1 .333-1.581a9.5 9.5 0 0 1-2.59-1.356C4.106 13.815 3 12.043 3 10c0-1.346.483-2.582 1.284-3.618c-.21-.82-.192-1.648-.112-2.283l.005-.038c.073-.582.158-1.267.566-1.719c.59-.653 1.584-.268 2.28-.031Z"/></g></svg>
-      </a>
-      <h1>q-chunk</h1>
-      <p class="subtitle">Queue & chunk your promises</p>
-    </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>chunked-promise</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script
+      type="module"
+      src="https://unpkg.com/gradient-gl?seed=a2.df8a"
+    ></script>
+    <style>
+      :root {
+        --bg: #0a0a0f;
+        --surface: #12121a88;
+        --border: #1e1e2e;
+        --text: #e4e4ef;
+        --muted: #6b6b7b;
+        --accent: #4411ee;
+        --q: #ff6b9d;
+        --chunk: #00ffc8;
+        --pending: #2a2a3a;
+        --running: #fbbf24;
+        --done: #34d399;
+        --failed: #ef4444;
+        --timeout: #f97316;
+        --cancelled: #6b7280;
+      }
+      @font-face {
+        font-family: "Nabla";
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400;
+        src:
+          url(https://cdn.jsdelivr.net/fontsource/fonts/nabla@latest/latin-400-normal.woff2)
+            format("woff2"),
+          url(https://cdn.jsdelivr.net/fontsource/fonts/nabla@latest/latin-400-normal.woff)
+            format("woff");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Space Grotesk", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 3rem 2rem;
+      }
+      header {
+        text-align: center;
+        margin-bottom: 4rem;
+        position: relative;
+      }
+      h1 {
+        font-family: "Nabla", system-ui;
+        font-size: 3rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, var(--accent), var(--q));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 1.1rem;
+      }
+      .github-link {
+        position: absolute;
+        top: 0;
+        right: 0;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 1.2rem;
+        transition:
+          color 0.2s,
+          transform 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .github-link:hover {
+        color: var(--text);
+        transform: translateY(-2px);
+      }
+      .github-link svg {
+        width: 20px;
+        height: 20px;
+        fill: currentColor;
+      }
+      .controls {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .control-row {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .control-row:not(:last-child) {
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .control-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .control-label {
+        font-size: 0.8rem;
+        color: var(--muted);
+        width: 55px;
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .control-inputs {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 160px;
+      }
+      .control-unit {
+        font-size: 0.8rem;
+        color: var(--muted);
+        width: 20px;
+      }
+      .control-spacer {
+        flex: 1;
+      }
+      label {
+        font-size: 0.9rem;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+      }
+      input[type="range"] {
+        width: 80px;
+        min-width: 60px;
+        max-width: 100px;
+        accent-color: var(--accent);
+        flex-shrink: 0;
+      }
+      input[type="number"] {
+        width: 50px;
+        min-width: 45px;
+        max-width: 55px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 0.35rem 0.4rem;
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        text-align: center;
+        flex-shrink: 0;
+      }
+      input[type="number"]:disabled,
+      input[type="range"]:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--accent);
+        cursor: pointer;
+      }
+      button {
+        font-family: inherit;
+        font-weight: 600;
+        padding: 0.5rem 1.2rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          opacity 0.2s;
+        font-size: 0.85rem;
+      }
+      .btn-run {
+        background: var(--accent);
+        color: white;
+      }
+      .btn-run:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+      .btn-run:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .btn-cancel {
+        background: var(--failed);
+        color: white;
+      }
+      .btn-cancel:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+      .btn-cancel:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .btn-reset {
+        background: var(--border);
+        color: var(--text);
+      }
+      .btn-reset:hover {
+        transform: translateY(-1px);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .control-row {
+          gap: 1rem;
+        }
+        .control-label {
+          width: 50px;
+          font-size: 0.75rem;
+        }
+        .control-inputs {
+          width: 140px;
+        }
+        .control-spacer {
+          display: none;
+        }
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        position: relative;
+      }
+      .panel::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 3px;
+        background: var(--color);
+        border-radius: 8px 8px 0 0;
+      }
+      .panel-head {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+      }
+      .panel-title {
+        font-family: "JetBrains Mono", monospace;
+        color: var(--color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .panel-title::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--color);
+      }
+      .time {
+        font-family: "JetBrains Mono", monospace;
+        color: var(--muted);
+      }
+      .progress-container {
+        margin-bottom: 1rem;
+      }
+      .progress-bar {
+        height: 4px;
+        background: var(--pending);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: var(--color);
+        transition: width 0.2s;
+        width: 0%;
+      }
+      .panel-stats {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+      }
+      .panel-stat {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      .panel-stat::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+      }
+      .panel-stat.done::before {
+        background: var(--done);
+      }
+      .panel-stat.failed::before {
+        background: var(--failed);
+      }
+      .panel-stat.timeout::before {
+        background: var(--timeout);
+      }
+      .panel-stat.cancelled::before {
+        background: var(--cancelled);
+      }
+      .tasks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        min-height: 120px;
+        align-content: flex-start;
+      }
+      .task {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        background: var(--pending);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        color: var(--muted);
+        transition: all 0.3s;
+        position: relative;
+      }
+      .task[data-state="running"] {
+        background: var(--running);
+        color: var(--bg);
+        animation: pulse 0.6s infinite;
+        box-shadow: 0 0 20px var(--running);
+      }
+      .task[data-state="done"] {
+        background: var(--done);
+        color: var(--bg);
+        animation: pop 0.4s;
+      }
+      .task[data-state="failed"] {
+        background: var(--failed);
+        color: white;
+        animation: shake 0.3s;
+      }
+      .task[data-state="timeout"] {
+        background: var(--timeout);
+        color: white;
+        animation: shake 0.3s;
+      }
+      .task[data-state="cancelled"] {
+        background: var(--cancelled);
+        color: white;
+        opacity: 0.6;
+        text-decoration: line-through;
+      }
+      @keyframes pulse {
+        50% {
+          transform: scale(1.1);
+        }
+      }
+      @keyframes pop {
+        0% {
+          transform: scale(1.3);
+        }
+      }
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-4px);
+        }
+        75% {
+          transform: translateX(4px);
+        }
+      }
+      .console {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .console-bar {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+      }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+      .dot:nth-child(1) {
+        background: #ff5f57;
+      }
+      .dot:nth-child(2) {
+        background: #febc2e;
+      }
+      .dot:nth-child(3) {
+        background: #28c840;
+      }
+      .console-out {
+        padding: 1rem;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        max-height: 280px;
+        overflow-y: auto;
+        line-height: 1.8;
+      }
+      .log {
+        display: flex;
+        gap: 0.75rem;
+      }
+      .log-t {
+        color: var(--muted);
+      }
+      .log-q {
+        color: var(--q);
+      }
+      .log-c {
+        color: var(--chunk);
+      }
+      .log-i {
+        color: var(--muted);
+      }
+      .log-s {
+        color: var(--done);
+      }
+      .log-e {
+        color: var(--failed);
+      }
+      .log-w {
+        color: var(--timeout);
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        padding: 1rem;
+        border-top: 1px solid var(--border);
+        text-align: center;
+      }
+      .stat-label {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .stat-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+      .stat-value.q {
+        color: var(--q);
+      }
+      .stat-value.c {
+        color: var(--chunk);
+      }
+      canvas {
+        filter: blur(1em) saturate(0.8) brightness(0.5) opacity(0.6);
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <a
+          href="https://github.com/metaory/chunked-promise"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="github-link"
+          aria-label="GitHub repository"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+          >
+            <g fill="none">
+              <path
+                d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"
+              />
+              <path
+                fill="currentColor"
+                d="M7.024 2.31a9 9 0 0 1 2.125 1.046A11.4 11.4 0 0 1 12 3c.993 0 1.951.124 2.849.355a9 9 0 0 1 2.124-1.045c.697-.237 1.69-.621 2.28.032c.4.444.5 1.188.571 1.756c.08.634.099 1.46-.111 2.28C20.516 7.415 21 8.652 21 10c0 2.042-1.106 3.815-2.743 5.043a9.5 9.5 0 0 1-2.59 1.356c.214.49.333 1.032.333 1.601v3a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-.991c-.955.117-1.756.013-2.437-.276c-.712-.302-1.208-.77-1.581-1.218c-.354-.424-.74-1.38-1.298-1.566a1 1 0 0 1 .632-1.898c.666.222 1.1.702 1.397 1.088c.48.62.87 1.43 1.63 1.753c.313.133.772.22 1.49.122L8 17.98a4 4 0 0 1 .333-1.581a9.5 9.5 0 0 1-2.59-1.356C4.106 13.815 3 12.043 3 10c0-1.346.483-2.582 1.284-3.618c-.21-.82-.192-1.648-.112-2.283l.005-.038c.073-.582.158-1.267.566-1.719c.59-.653 1.584-.268 2.28-.031Z"
+              />
+            </g>
+          </svg>
+        </a>
+        <h1>chunked-promise</h1>
+        <p class="subtitle">Chunked async execution</p>
+      </header>
 
-    <div class="controls">
-      <label>Tasks <input type="range" id="count" min="4" max="24" value="12" oninput="this.nextElementSibling.value=this.value"><input type="number" min="4" max="24" value="12" oninput="this.previousElementSibling.value=this.value"></label>
-      <label>Chunk <input type="range" id="size" min="1" max="12" value="4" oninput="this.nextElementSibling.value=this.value"><input type="number" min="1" max="12" value="4" oninput="this.previousElementSibling.value=this.value"></label>
-      <label>Duration <input type="range" id="delay" min="100" max="5000" step="100" value="300" oninput="this.nextElementSibling.value=this.value"><input type="number" id="delay-num" min="100" max="5000" step="100" value="300" oninput="this.previousElementSibling.value=this.value">ms</label>
-      <label style="cursor: pointer;"><input type="checkbox" id="random" style="cursor: pointer;" onchange="toggleRandom()"> Random duration</label>
-      <button class="btn-run" onclick="run()">Run Demo</button>
-      <button class="btn-reset" onclick="reset()">Reset</button>
-    </div>
-
-    <div class="grid">
-      <section class="panel" style="--color: var(--q)">
-        <div class="panel-head">
-          <span class="panel-title">q()</span>
-          <span class="time" id="time-q">--</span>
+      <div class="controls">
+        <div class="control-row">
+          <div class="control-item">
+            <span class="control-label">Tasks</span>
+            <div class="control-inputs">
+              <input
+                type="range"
+                id="count"
+                min="4"
+                max="24"
+                value="12"
+                oninput="this.nextElementSibling.value=this.value"
+              />
+              <input
+                type="number"
+                min="4"
+                max="24"
+                value="12"
+                oninput="this.previousElementSibling.value=this.value"
+              />
+            </div>
+          </div>
+          <div class="control-item">
+            <span class="control-label">Chunk</span>
+            <div class="control-inputs">
+              <input
+                type="range"
+                id="size"
+                min="1"
+                max="12"
+                value="4"
+                oninput="this.nextElementSibling.value=this.value"
+              />
+              <input
+                type="number"
+                min="1"
+                max="12"
+                value="4"
+                oninput="this.previousElementSibling.value=this.value"
+              />
+            </div>
+          </div>
+          <div class="control-item">
+            <span class="control-label">Duration</span>
+            <div class="control-inputs">
+              <input
+                type="range"
+                id="delay"
+                min="100"
+                max="5000"
+                step="100"
+                value="500"
+                oninput="this.nextElementSibling.value=this.value"
+              />
+              <input
+                type="number"
+                id="delay-num"
+                min="100"
+                max="5000"
+                step="100"
+                value="500"
+                oninput="this.previousElementSibling.value=this.value"
+              />
+              <span class="control-unit">ms</span>
+            </div>
+          </div>
+          <label
+            ><input type="checkbox" id="random" onchange="toggleRandom()" />
+            Random</label
+          >
         </div>
-        <div class="tasks" id="tasks-q"></div>
-      </section>
-      <section class="panel" style="--color: var(--chunk)">
-        <div class="panel-head">
-          <span class="panel-title">chunk()</span>
-          <span class="time" id="time-c">--</span>
+        <div class="control-row">
+          <div class="control-item">
+            <span class="control-label">Timeout</span>
+            <div class="control-inputs">
+              <input
+                type="range"
+                id="timeout"
+                min="0"
+                max="3000"
+                step="100"
+                value="0"
+                oninput="this.nextElementSibling.value=this.value"
+              />
+              <input
+                type="number"
+                id="timeout-num"
+                min="0"
+                max="3000"
+                step="100"
+                value="0"
+                oninput="this.previousElementSibling.value=this.value"
+              />
+              <span class="control-unit">ms</span>
+            </div>
+          </div>
+          <div class="control-item">
+            <span class="control-label">Fail %</span>
+            <div class="control-inputs">
+              <input
+                type="range"
+                id="failrate"
+                min="0"
+                max="50"
+                value="0"
+                oninput="this.nextElementSibling.value=this.value"
+              />
+              <input
+                type="number"
+                min="0"
+                max="50"
+                value="0"
+                oninput="this.previousElementSibling.value=this.value"
+              />
+              <span class="control-unit">%</span>
+            </div>
+          </div>
+          <div class="control-item">
+            <span class="control-label">Rate</span>
+            <div class="control-inputs">
+              <input type="number" id="ratelimit" min="0" max="100" value="0" />
+              <span class="control-unit">/s</span>
+            </div>
+          </div>
+          <span class="control-spacer"></span>
+          <button class="btn-run" id="btn-run" onclick="run()">Run</button>
+          <button
+            class="btn-cancel"
+            id="btn-cancel"
+            onclick="cancel()"
+            disabled
+          >
+            Cancel
+          </button>
+          <button class="btn-reset" onclick="reset()">Reset</button>
         </div>
-        <div class="tasks" id="tasks-c"></div>
-      </section>
-    </div>
-
-    <div class="console">
-      <div class="console-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-      <div class="console-out" id="out"></div>
-      <div class="stats" id="stats" hidden>
-        <div><div class="stat-label">q() time</div><div class="stat-value q" id="stat-q"></div></div>
-        <div><div class="stat-label">chunk() time</div><div class="stat-value c" id="stat-c"></div></div>
       </div>
-    </div>
-  </main>
 
-  <script type="module">
-    import { q, chunk } from './src/q-chunk.js'
+      <div class="grid">
+        <section class="panel" style="--color: var(--q)">
+          <div class="panel-head">
+            <span class="panel-title">q()</span>
+            <span class="time" id="time-q">--</span>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-q"></div>
+            </div>
+          </div>
+          <div class="panel-stats">
+            <span class="panel-stat done"
+              ><span id="stat-q-done">0</span> done</span
+            >
+            <span class="panel-stat failed"
+              ><span id="stat-q-failed">0</span> failed</span
+            >
+            <span class="panel-stat timeout"
+              ><span id="stat-q-timeout">0</span> timeout</span
+            >
+          </div>
+          <div class="tasks" id="tasks-q"></div>
+        </section>
+        <section class="panel" style="--color: var(--chunk)">
+          <div class="panel-head">
+            <span class="panel-title">chunk()</span>
+            <span class="time" id="time-c">--</span>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-c"></div>
+            </div>
+          </div>
+          <div class="panel-stats">
+            <span class="panel-stat done"
+              ><span id="stat-c-done">0</span> done</span
+            >
+            <span class="panel-stat failed"
+              ><span id="stat-c-failed">0</span> failed</span
+            >
+            <span class="panel-stat timeout"
+              ><span id="stat-c-timeout">0</span> timeout</span
+            >
+          </div>
+          <div class="tasks" id="tasks-c"></div>
+        </section>
+      </div>
 
-    const $ = id => document.getElementById(id)
-    const val = id => +$(id).value
-    let running = false
+      <div class="console">
+        <div class="console-bar">
+          <span class="dot"></span><span class="dot"></span
+          ><span class="dot"></span>
+        </div>
+        <div class="console-out" id="out"></div>
+        <div class="stats" id="stats" hidden>
+          <div>
+            <div class="stat-label">q() time</div>
+            <div class="stat-value q" id="stat-q"></div>
+          </div>
+          <div>
+            <div class="stat-label">chunk() time</div>
+            <div class="stat-value c" id="stat-c"></div>
+          </div>
+        </div>
+      </div>
+    </main>
 
-    const renderTasks = (id, n) => {
-      $(id).innerHTML = Array.from({ length: n }, (_, i) =>
-        `<div class="task" data-i="${i}">${i + 1}</div>`
-      ).join('')
-    }
+    <script type="module">
+      import { q, chunk, AbortError, TimeoutError } from "./src/chunked-promise.js";
 
-    const setTaskState = (id, i, state) =>
-      $(id).querySelector(`[data-i="${i}"]`)?.setAttribute('data-state', state)
+      const $ = (id) => document.getElementById(id);
+      const val = (id) => +$(id).value;
+      let running = false;
+      let abortController = null;
 
-    const log = (msg, cls = 'i') => {
-      const t = new Date().toLocaleTimeString('en-US', { hour12: false })
-      $('out').innerHTML += `<div class="log"><span class="log-t">${t}</span><span class="log-${cls}">${msg}</span></div>`
-      $('out').scrollTop = $('out').scrollHeight
-    }
+      const renderTasks = (id, n) => {
+        $(id).innerHTML = Array.from(
+          { length: n },
+          (_, i) => `<div class="task" data-i="${i}">${i + 1}</div>`,
+        ).join("");
+      };
 
-    const reset = () => {
-      const n = val('count')
-      renderTasks('tasks-q', n)
-      renderTasks('tasks-c', n)
-      $('time-q').textContent = $('time-c').textContent = '--'
-      $('out').innerHTML = ''
-      $('stats').hidden = true
-    }
+      const setTaskState = (id, i, state) =>
+        $(id)
+          .querySelector(`[data-i="${i}"]`)
+          ?.setAttribute("data-state", state);
 
-    const run = async () => {
-      if (running) return
-      running = true
-      document.querySelector('.btn-run').disabled = true
+      const updateProgress = (id, percent) => {
+        $(`progress-${id}`).style.width = `${percent}%`;
+      };
 
-      const [n, size, baseDelay, isRandom] = [val('count'), val('size'), val('delay'), $('random').checked]
-      reset()
-      const RANDOM_MIN = 500
-      const delayDesc = isRandom ? `random (${RANDOM_MIN}-${baseDelay}ms)` : `${baseDelay}ms`
-      log(`Starting: ${n} tasks, chunk=${size}, duration=${delayDesc}`, 'i')
+      const updatePanelStats = (id, results) => {
+        let done = 0,
+          failed = 0,
+          timeout = 0;
+        for (const r of results) {
+          if (r.status === "fulfilled") done++;
+          else if (r.reason?.name === "TimeoutError") timeout++;
+          else failed++;
+        }
+        $(`stat-${id}-done`).textContent = done;
+        $(`stat-${id}-failed`).textContent = failed;
+        $(`stat-${id}-timeout`).textContent = timeout;
+      };
 
-      const getDelay = () => isRandom ? Math.floor(Math.random() * (baseDelay - RANDOM_MIN + 1)) + RANDOM_MIN : baseDelay
+      const log = (msg, cls = "i") => {
+        const t = new Date().toLocaleTimeString("en-US", { hour12: false });
+        $("out").innerHTML +=
+          `<div class="log"><span class="log-t">${t}</span><span class="log-${cls}">${msg}</span></div>`;
+        $("out").scrollTop = $("out").scrollHeight;
+      };
 
-      const makeTasks = (container, type) =>
-        Array.from({ length: n }, (_, i) => async () => {
-          const taskDelay = getDelay()
-          setTaskState(container, i, 'running')
-          log(`${type}: task ${i + 1} started${isRandom ? ` (${taskDelay}ms)` : ''}`, type === 'q' ? 'q' : 'c')
-          await new Promise(r => setTimeout(r, taskDelay))
-          setTaskState(container, i, 'done')
-          log(`${type}: task ${i + 1} done`, type === 'q' ? 'q' : 'c')
-          return i + 1
-        })
+      const resetPanelStats = (id) => {
+        $(`stat-${id}-done`).textContent = "0";
+        $(`stat-${id}-failed`).textContent = "0";
+        $(`stat-${id}-timeout`).textContent = "0";
+        updateProgress(id, 0);
+      };
 
-      log('--- q() ---', 'i')
-      const t0 = performance.now()
-      await q(makeTasks('tasks-q', 'q'))
-      const qMs = Math.round(performance.now() - t0)
-      $('time-q').textContent = `${qMs}ms`
-      log(`q() done in ${qMs}ms`, 's')
+      const reset = () => {
+        const n = val("count");
+        renderTasks("tasks-q", n);
+        renderTasks("tasks-c", n);
+        $("time-q").textContent = $("time-c").textContent = "--";
+        $("out").innerHTML = "";
+        $("stats").hidden = true;
+        resetPanelStats("q");
+        resetPanelStats("c");
+      };
 
-      log(`--- chunk(fns, ${size}) ---`, 'i')
-      const t1 = performance.now()
-      await chunk(makeTasks('tasks-c', 'chunk'), size)
-      const cMs = Math.round(performance.now() - t1)
-      $('time-c').textContent = `${cMs}ms`
-      log(`chunk() done in ${cMs}ms`, 's')
+      const cancel = () => {
+        if (abortController) {
+          abortController.abort();
+          log("Cancelled by user", "w");
+        }
+      };
 
-      $('stat-q').textContent = `${qMs}ms`
-      $('stat-c').textContent = `${cMs}ms`
-      $('stats').hidden = false
-      log(`chunk() was ${(qMs / cMs).toFixed(1)}x faster!`, 's')
+      const run = async () => {
+        if (running) return;
+        running = true;
+        abortController = new AbortController();
+        $("btn-run").disabled = true;
+        $("btn-cancel").disabled = false;
 
-      running = false
-      document.querySelector('.btn-run').disabled = false
-    }
+        const [n, size, baseDelay, isRandom] = [
+          val("count"),
+          val("size"),
+          val("delay"),
+          $("random").checked,
+        ];
+        const timeout = val("timeout") || undefined;
+        const failRate = val("failrate");
+        const rateLimit = val("ratelimit") || undefined;
 
-    const toggleRandom = () => {
-      const isRandom = $('random').checked
-      $('delay').disabled = isRandom
-      $('delay-num').disabled = isRandom
-    }
+        reset();
+        const RANDOM_MIN = 200;
+        const RANDOM_MAX = baseDelay;
+        const delayDesc = isRandom
+          ? `random (${RANDOM_MIN}-${RANDOM_MAX}ms)`
+          : `${baseDelay}ms`;
 
-    Object.assign(window, { run, reset, toggleRandom })
-    toggleRandom()
-    reset()
-    log('Ready. Click "Run Demo" to start.', 'i')
-  </script>
-</body>
+        let configDesc = `${n} tasks, chunk=${size}, duration=${delayDesc}`;
+        if (timeout) configDesc += `, timeout=${timeout}ms`;
+        if (failRate) configDesc += `, fail=${failRate}%`;
+        if (rateLimit) configDesc += `, rate=${rateLimit}/s`;
+        log(`Starting: ${configDesc}`, "i");
+
+        const getDelay = () =>
+          isRandom
+            ? Math.floor(Math.random() * (RANDOM_MAX - RANDOM_MIN + 1)) +
+              RANDOM_MIN
+            : baseDelay;
+
+        const shouldFail = () => failRate > 0 && Math.random() * 100 < failRate;
+
+        const makeTasks = (container, type) =>
+          Array.from({ length: n }, (_, i) => async () => {
+            const taskDelay = getDelay();
+            const willFail = shouldFail();
+            setTaskState(container, i, "running");
+            log(
+              `${type}: task ${i + 1} started${isRandom ? ` (${taskDelay}ms)` : ""}${willFail ? " [will fail]" : ""}`,
+              type === "q" ? "q" : "c",
+            );
+            await new Promise((r) => setTimeout(r, taskDelay));
+            if (willFail) {
+              throw new Error(`Task ${i + 1} failed`);
+            }
+            return i + 1;
+          });
+
+        const getResultState = (result) => {
+          if (result.status === "fulfilled") return "done";
+          if (result.reason?.name === "TimeoutError") return "timeout";
+          if (result.reason?.name === "AbortError") return "cancelled";
+          return "failed";
+        };
+
+        const makeOnProgress =
+          (container, type, taskIndexMap) =>
+          ({ done, total, results }) => {
+            updateProgress(type === "q" ? "q" : "c", (done / total) * 100);
+            updatePanelStats(type === "q" ? "q" : "c", results);
+
+            // Update task states based on results
+            results.forEach((result, i) => {
+              const state = getResultState(result);
+              setTaskState(container, i, state);
+              if (state === "done") {
+                // Already logged start, just update visual
+              } else if (state === "failed") {
+                log(`${type}: task ${i + 1} failed`, "e");
+              } else if (state === "timeout") {
+                log(`${type}: task ${i + 1} timed out`, "w");
+              }
+            });
+          };
+
+        // Run q()
+        let qMs = 0,
+          cMs = 0;
+        let qCancelled = false,
+          cCancelled = false;
+
+        try {
+          log("--- q() ---", "i");
+          const t0 = performance.now();
+          const qTasks = makeTasks("tasks-q", "q");
+          await q(qTasks, {
+            signal: abortController.signal,
+            timeout,
+            rateLimit,
+            onProgress: makeOnProgress("tasks-q", "q"),
+          });
+          qMs = Math.round(performance.now() - t0);
+          $("time-q").textContent = `${qMs}ms`;
+          log(`q() done in ${qMs}ms`, "s");
+        } catch (e) {
+          if (e.name === "AbortError") {
+            qCancelled = true;
+            log("q() cancelled", "w");
+            // Mark remaining tasks as cancelled
+            document
+              .querySelectorAll("#tasks-q .task:not([data-state])")
+              .forEach((el) => {
+                el.setAttribute("data-state", "cancelled");
+              });
+          } else {
+            log(`q() error: ${e.message}`, "e");
+          }
+        }
+
+        // Run chunk() only if not cancelled
+        if (!qCancelled) {
+          try {
+            log(`--- chunk(fns, ${size}) ---`, "i");
+            const t1 = performance.now();
+            const cTasks = makeTasks("tasks-c", "chunk");
+            await chunk(cTasks, size, {
+              signal: abortController.signal,
+              timeout,
+              rateLimit,
+              onProgress: makeOnProgress("tasks-c", "chunk"),
+            });
+            cMs = Math.round(performance.now() - t1);
+            $("time-c").textContent = `${cMs}ms`;
+            log(`chunk() done in ${cMs}ms`, "s");
+          } catch (e) {
+            if (e.name === "AbortError") {
+              cCancelled = true;
+              log("chunk() cancelled", "w");
+              document
+                .querySelectorAll("#tasks-c .task:not([data-state])")
+                .forEach((el) => {
+                  el.setAttribute("data-state", "cancelled");
+                });
+            } else {
+              log(`chunk() error: ${e.message}`, "e");
+            }
+          }
+        }
+
+        // Show stats
+        if (!qCancelled && !cCancelled && qMs && cMs) {
+          $("stat-q").textContent = `${qMs}ms`;
+          $("stat-c").textContent = `${cMs}ms`;
+          $("stats").hidden = false;
+          const speedup = cMs > 0 ? (qMs / cMs).toFixed(1) : "∞";
+          log(`chunk() was ${speedup}x faster!`, "s");
+        }
+
+        running = false;
+        abortController = null;
+        $("btn-run").disabled = false;
+        $("btn-cancel").disabled = true;
+      };
+
+      const toggleRandom = () => {
+        const isRandom = $("random").checked;
+        $("delay").disabled = isRandom;
+        $("delay-num").disabled = isRandom;
+      };
+
+      Object.assign(window, { run, reset, cancel, toggleRandom });
+      toggleRandom();
+      reset();
+      log('Ready. Click "Run Demo" to start.', "i");
+    </script>
+  </body>
 </html>

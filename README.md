@@ -1,17 +1,17 @@
-# q-chunk
+# chunked-promise
 
-Queue & chunk your promises. No deps. 15 lines.
+Chunked async execution. No deps.
 
 ## Install
 
 ```bash
-npm install q-chunk
+npm install chunked-promise
 ```
 
 ## Usage
 
 ```javascript
-import { q, chunk } from 'q-chunk'
+import { q, chunk } from 'chunked-promise'
 
 const tasks = urls.map(url => () => fetch(url))
 
@@ -21,7 +21,7 @@ await chunk(tasks, 3) // batched: [1,2,3] → [4,5,6]
 
 ## API
 
-### `q(fns)`
+### `q(fns, opts?)`
 
 Queue execution - one at a time.
 
@@ -33,7 +33,7 @@ await q([
 ])
 ```
 
-### `chunk(fns, n = 5)`
+### `chunk(fns, n = 5, opts?)`
 
 Chunk execution - n at a time.
 
@@ -44,6 +44,28 @@ await chunk([
   () => fetch('/api/3'),
   () => fetch('/api/4')
 ], 2)  // [1,2] → [3,4]
+```
+
+### Options
+
+Both functions accept an options object:
+
+```javascript
+await chunk(tasks, 4, {
+  onProgress: ({ done, total, results }) => {},  // Progress callback
+  signal: AbortSignal,                            // Cancellation
+  timeout: 5000,                                  // Per-task timeout (ms)
+  rateLimit: 10,                                  // Max tasks per second
+})
+```
+
+Results use settled mode (like `Promise.allSettled`):
+
+```javascript
+[
+  { status: 'fulfilled', value: result },
+  { status: 'rejected', reason: error },
+]
 ```
 
 ## Demo

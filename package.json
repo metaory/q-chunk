@@ -1,19 +1,19 @@
 {
-  "name": "q-chunk",
-  "version": "0.0.1",
+  "name": "chunked-promise",
+  "version": "0.0.2",
   "type": "module",
-  "description": "Queue & chunk your promises",
-  "main": "src/q-chunk.js",
-  "module": "src/q-chunk.js",
-  "types": "src/q-chunk.js",
+  "description": "Chunked async execution",
+  "main": "src/chunked-promise.js",
+  "module": "src/chunked-promise.js",
+  "types": "src/chunked-promise.js",
   "exports": {
     ".": {
-      "import": "./src/q-chunk.js",
-      "types": "./src/q-chunk.js"
+      "import": "./src/chunked-promise.js",
+      "types": "./src/chunked-promise.js"
     }
   },
   "files": [
-    "src/q-chunk.js"
+    "src/chunked-promise.js"
   ],
   "sideEffects": false,
   "scripts": {
@@ -23,12 +23,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/metaory/q-chunk.git"
+    "url": "git+https://github.com/metaory/chunked-promise.git"
   },
   "bugs": {
-    "url": "https://github.com/metaory/q-chunk/issues"
+    "url": "https://github.com/metaory/chunked-promise/issues"
   },
-  "homepage": "https://metaory.github.io/q-chunk",
+  "homepage": "https://metaory.github.io/chunked-promise",
   "keywords": [
     "promise",
     "queue",
