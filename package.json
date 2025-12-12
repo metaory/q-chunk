@@ -1,0 +1,49 @@
+{
+  "name": "q-chunk",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Queue & chunk your promises",
+  "main": "src/q-chunk.js",
+  "module": "src/q-chunk.js",
+  "types": "src/q-chunk.js",
+  "exports": {
+    ".": {
+      "import": "./src/q-chunk.js",
+      "types": "./src/q-chunk.js"
+    }
+  },
+  "files": [
+    "src/q-chunk.js"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metaory/q-chunk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/metaory/q-chunk/issues"
+  },
+  "homepage": "https://metaory.github.io/q-chunk",
+  "keywords": [
+    "promise",
+    "queue",
+    "chunk",
+    "batch",
+    "async",
+    "concurrency",
+    "parallel",
+    "sequential",
+    "throttle",
+    "rate-limit"
+  ],
+  "author": "metaory",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^7.2.4"
+  }
+}
