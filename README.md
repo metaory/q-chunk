@@ -1,6 +1,8 @@
-# chunked-promise
-
-Chunked async execution. No deps.
+<div align="center">
+  <img src="public/logo.png" alt="chunked-promise logo" width="120" />
+  <h1>chunked-promise</h1>
+  <p>Chunked async execution. No deps.</p>
+</div>
 
 ## Install
 
