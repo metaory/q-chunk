@@ -1,6 +1,6 @@
 {
   "name": "chunked-promise",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "type": "module",
   "description": "Chunked async execution",
   "main": "src/chunked-promise.js",
