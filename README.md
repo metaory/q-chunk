@@ -149,6 +149,17 @@ await chunk(apiCalls, 4, { rateLimit: 10 })
 
 ### Pool (Global Rate Limiting)
 
+```mermaid
+flowchart LR
+    subgraph pool [Pool]
+        state[Shared State]
+    end
+    A[chunk A] --> pool
+    B[chunk B] --> pool
+    C[q C] --> pool
+    pool --> out[Rate Limited Output]
+```
+
 Without a pool, each call has its own rate limiter:
 
 ```javascript
